@@ -25,8 +25,6 @@ var junctionChars = []string{
 	"╵", // Top end of vertical line
 	"╶", // Right end of horizontal line
 	"╷", // Bottom end of vertical line
-	"═", // Double horizontal (decision box border)
-	"║", // Double vertical (decision box border)
 }
 
 type drawing [][]string
@@ -448,47 +446,45 @@ func drawCircleBox(n *node, g graph) *drawing {
 	return &boxDrawing
 }
 
-// drawDiamondBox draws a decision node.
+// drawDiamondBox draws a diamond/rhombus shape.
 //
-// Terminal box-drawing cannot render a clean rhombus for realistic (wide,
-// short) labels: a single glyph per row leaves the diagonal edges several
-// columns apart, so they scatter instead of connecting. Instead the decision
-// shape is drawn as a double-line box — connected at any size, trivial to draw,
-// and visually distinct from the single-line rectangles used for plain nodes.
+// The diamond has its top and bottom apexes at the horizontal center and its
+// left/right points at the vertical middle — the row that carries the label —
+// so the widest part of the shape contains the text. Each row holds a single
+// glyph per edge (a thin outline), and the half-width scales with the node's
+// full width so wide labels stay inside the shape rather than overflowing it.
 func drawDiamondBox(n *node, g graph) *drawing {
 	w, h := getNodeDimensions(n, g)
 	from := drawingCoord{0, 0}
 	to := drawingCoord{w, h}
 	boxDrawing := *(mkDrawing(Max(from.x, to.x), Max(from.y, to.y)))
-	log.Debug("Drawing decision (double-line) box from ", from, " to ", to)
-	if !g.useAscii {
-		for x := from.x + 1; x < to.x; x++ {
-			boxDrawing[x][from.y] = "═"
-			boxDrawing[x][to.y] = "═"
-		}
-		for y := from.y + 1; y < to.y; y++ {
-			boxDrawing[from.x][y] = "║"
-			boxDrawing[to.x][y] = "║"
-		}
-		boxDrawing[from.x][from.y] = "╔"
-		boxDrawing[to.x][from.y] = "╗"
-		boxDrawing[from.x][to.y] = "╚"
-		boxDrawing[to.x][to.y] = "╝"
-	} else {
-		// ASCII fallback: '=' borders read as a heavier "decision" box.
-		for x := from.x + 1; x < to.x; x++ {
-			boxDrawing[x][from.y] = "="
-			boxDrawing[x][to.y] = "="
-		}
-		for y := from.y + 1; y < to.y; y++ {
-			boxDrawing[from.x][y] = "|"
-			boxDrawing[to.x][y] = "|"
-		}
-		boxDrawing[from.x][from.y] = "+"
-		boxDrawing[to.x][from.y] = "+"
-		boxDrawing[from.x][to.y] = "+"
-		boxDrawing[to.x][to.y] = "+"
+	log.Debug("Drawing diamond box from ", from, " to ", to)
+
+	midX := w / 2
+	midY := h / 2
+	if midY == 0 {
+		midY = 1
 	}
+
+	fwd, back := "╱", "╲"
+	if g.useAscii {
+		fwd, back = "/", "\\"
+	}
+
+	// Top half: the half-width grows from 0 at the apex (midX, 0) to midX at the
+	// vertical middle, so the widest row reaches the left/right points (x=0, x=w).
+	for y := 0; y <= midY; y++ {
+		half := divRound(midX*y, midY)
+		boxDrawing[midX-half][from.y+y] = fwd  // top-left edge
+		boxDrawing[midX+half][from.y+y] = back // top-right edge
+	}
+	// Bottom half: mirror of the top, shrinking back to the apex at (midX, h).
+	for dy := 0; dy <= midY; dy++ {
+		half := divRound(midX*(midY-dy), midY)
+		boxDrawing[midX-half][from.y+midY+dy] = back // bottom-left edge
+		boxDrawing[midX+half][from.y+midY+dy] = fwd  // bottom-right edge
+	}
+
 	drawNodeText(&boxDrawing, n, g, w, h)
 	return &boxDrawing
 }
@@ -755,10 +751,6 @@ func mergeJunctions(c1, c2 string) string {
 		"┤": {"─": "┼", "│": "┤", "┌": "┼", "┐": "┤", "└": "┼", "┘": "┤", "├": "┼", "┬": "┼", "┴": "┼"},
 		"┬": {"─": "┬", "│": "┼", "┌": "┬", "┐": "┬", "└": "┼", "┘": "┼", "├": "┼", "┤": "┼", "┴": "┼"},
 		"┴": {"─": "┴", "│": "┼", "┌": "┼", "┐": "┼", "└": "┴", "┘": "┴", "├": "┼", "┤": "┼", "┬": "┼"},
-		// Double-line decision-box borders meeting single-line edges. The edge
-		// attaches with a single stub so the box stays visually "double".
-		"═": {"│": "╪", "┬": "╤", "┴": "╧", "├": "╪", "┤": "╪", "┼": "╪", "╵": "╧", "╷": "╤"},
-		"║": {"─": "╫", "├": "╟", "┤": "╢", "┬": "╫", "┴": "╫", "┼": "╫", "╴": "╢", "╶": "╟"},
 	}
 
 	// Check if there's a defined merge for the two characters
