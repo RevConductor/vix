@@ -98,6 +98,8 @@ func wordWrap(text string, maxWidth int) string {
 // shapeExtraWidth returns the extra width a shape adds beyond text + border padding.
 func shapeExtraWidth(shape nodeShape, boxBorderPadding int) int {
 	switch shape {
+	case shapeDiamond:
+		return 2 * (1 + boxBorderPadding)
 	case shapeHexagon:
 		return 4
 	case shapeSubroutine:
@@ -302,6 +304,9 @@ func (g *graph) constrainToTargetWidth() {
 			continue
 		}
 		rowHeight := n.nameHeight() + 2*g.boxBorderPadding
+		if n.shape == shapeDiamond {
+			rowHeight += 2
+		}
 		yCoord := n.gridCoord.y + 1
 		g.rowHeight[yCoord] = Max(g.rowHeight[yCoord], rowHeight)
 	}
@@ -319,6 +324,11 @@ func (g *graph) setColumnWidth(n *node) {
 
 	// Shapes that need extra width
 	switch n.shape {
+	case shapeDiamond:
+		// Diamond needs width = height for the diagonal lines.
+		// The text row needs extra horizontal space for the / and \ borders.
+		extraPerSide := 1 + g.boxBorderPadding // space for diagonal + padding
+		col2 += 2 * extraPerSide
 	case shapeHexagon:
 		// Hexagon has angled edges on left/right
 		col2 += 2 * 2 // 2 extra chars per side for the angled edges
@@ -340,6 +350,10 @@ func (g *graph) setColumnWidth(n *node) {
 	colsToBePlaced := []int{col1, col2, col3}
 
 	rowHeight := n.nameHeight() + 2*g.boxBorderPadding
+	// Diamond needs extra height for the diagonal shape
+	if n.shape == shapeDiamond {
+		rowHeight += 2 // extra rows for top and bottom points
+	}
 	rowsToBePlaced := []int{1, rowHeight, 1} // Border, padding + line, border
 
 	for idx, col := range colsToBePlaced {
