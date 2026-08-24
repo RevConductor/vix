@@ -21,7 +21,7 @@ require (
 	github.com/posthog/posthog-go v1.11.2
 	github.com/rivo/uniseg v0.4.7
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.1
 	github.com/tidwall/sjson v1.2.5
 	github.com/tree-sitter-grammars/tree-sitter-kotlin v1.1.0
 	github.com/tree-sitter/go-tree-sitter v0.25.0
